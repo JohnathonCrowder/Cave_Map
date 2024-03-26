@@ -7,6 +7,7 @@ from PyQt5.QtCore import QUrl
 import folium
 import geocoder
 from geopy.distance import geodesic
+from PyQt5.QtWidgets import QCheckBox
 
 class CaveMapper(QWidget):
     def __init__(self, filepath):
@@ -15,6 +16,7 @@ class CaveMapper(QWidget):
         self.df = self.csv_to_dataframe()
         self.user_location = None
         self.map_widget = None
+        self.map_tiles = 'OpenStreetMap'
         self.initUI()
 
     def csv_to_dataframe(self):
@@ -45,7 +47,7 @@ class CaveMapper(QWidget):
             mean_lon = self.df['longitude'].mean()
 
             # Create a map centered on the mean latitude and longitude
-            cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6)
+            cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, tiles=self.map_tiles)
 
             # Add markers for each cave location with the cave name, coordinates, and a button
             for idx, row in self.df.iterrows():
@@ -98,7 +100,7 @@ class CaveMapper(QWidget):
                 return
 
         # Create a map centered on the cave location
-        cave_map = folium.Map(location=[latitude, longitude], zoom_start=10)
+        cave_map = folium.Map(location=[latitude, longitude], zoom_start=10, tiles=self.map_tiles)
 
         # Add a marker for the cave location with the cave name, coordinates, and a button
         popup_html = f'''
@@ -121,7 +123,7 @@ class CaveMapper(QWidget):
             user_lat, user_lon = self.user_location
 
             # Create a map centered on the user's location
-            user_map = folium.Map(location=[user_lat, user_lon], zoom_start=10)
+            user_map = folium.Map(location=[user_lat, user_lon], zoom_start=10, tiles=self.map_tiles)
 
             # Add a marker for the user's location
             folium.Marker([user_lat, user_lon], popup="Your Location", icon=folium.Icon(color='red')).add_to(user_map)
@@ -141,7 +143,7 @@ class CaveMapper(QWidget):
             mean_lon = self.filtered_caves['longitude'].mean()
 
             # Create a map centered on the mean latitude and longitude
-            cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6)
+            cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, tiles=self.map_tiles)
 
             # Add markers for each filtered cave location with the cave name, coordinates, and a button
             for idx, row in self.filtered_caves.iterrows():
@@ -174,7 +176,7 @@ class CaveMapper(QWidget):
 
             if not nearby_caves.empty:
                 # Create a map centered on the user's location
-                nearby_caves_map = folium.Map(location=[user_lat, user_lon], zoom_start=8)
+                nearby_caves_map = folium.Map(location=[user_lat, user_lon], zoom_start=8, tiles=self.map_tiles)
 
                 # Add a marker for the user's location
                 folium.Marker([user_lat, user_lon], popup="Your Location", icon=folium.Icon(color='red')).add_to(nearby_caves_map)
@@ -272,6 +274,11 @@ class CaveMapper(QWidget):
             main_layout.addLayout(controls_layout, 1)  # Set the controls layout to take up 1/4 of the space
             layout.addLayout(main_layout)
 
+            # Create a checkbox for satellite mode
+            self.satellite_checkbox = QCheckBox("Satellite Mode")
+            self.satellite_checkbox.stateChanged.connect(self.toggle_satellite_mode)
+            controls_layout.addWidget(self.satellite_checkbox)
+
             self.setLayout(layout)
             self.setGeometry(100, 100, 800, 600)
             self.setWindowTitle('Cave Mapper')
@@ -291,6 +298,13 @@ class CaveMapper(QWidget):
             self.show_user_location()
         else:
             print("Unable to retrieve user location.")
+
+    def toggle_satellite_mode(self, state):
+       if state:
+           self.map_tiles = 'Esri World_Imagery'
+       else:
+           self.map_tiles = 'OpenStreetMap'
+       self.show_all_cave_locations()
 
 if __name__ == '__main__':
     filepath = r"C:\Users\Admin\Downloads\caves.csv"
