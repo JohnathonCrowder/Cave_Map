@@ -35,6 +35,10 @@ class CaveMapper(QWidget):
             return None
 
     def show_all_cave_locations(self):
+        self.search_entry.clear()
+        self.distance_input.clear()
+        self.filter_caves("")
+
         if self.df is not None:
             # Calculate the mean latitude and longitude of all caves
             mean_lat = self.df['latitude'].mean()
@@ -43,12 +47,19 @@ class CaveMapper(QWidget):
             # Create a map centered on the mean latitude and longitude
             cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6)
 
-            # Add markers for each cave location with the cave name
+            # Add markers for each cave location with the cave name, coordinates, and a button
             for idx, row in self.df.iterrows():
                 cave = row['cave']
                 latitude = row['latitude']
                 longitude = row['longitude']
-                folium.Marker([latitude, longitude], popup=cave).add_to(cave_map)
+                popup_html = f'''
+                    <b>{cave}</b><br>
+                    Latitude: {latitude}<br>
+                    Longitude: {longitude}<br>
+                    <button onclick="console.log('{cave}')">Print Cave Name</button>
+                '''
+                popup = folium.Popup(popup_html, max_width=300)
+                folium.Marker([latitude, longitude], popup=popup).add_to(cave_map)
 
             # Save the map as an HTML file
             cave_map.save("caves.html")
@@ -185,14 +196,27 @@ class CaveMapper(QWidget):
         else:
             print("DataFrame is empty or user location is not available.")
 
+    def filter_caves_by_distance(self, text):
+        if self.user_location is None:
+            self.get_user_location()
+        self.filter_caves(self.search_entry.text())
+
     def filter_caves(self, text):
         self.cave_list.clear()
         if text:
             self.filtered_caves = self.df[self.df['cave'].str.lower().str.startswith(text.lower())]
-            self.cave_list.addItems(self.filtered_caves['cave'].tolist())
         else:
             self.filtered_caves = self.df
-            self.cave_list.addItems(self.df['cave'].tolist())
+
+        if self.distance_input.text() and self.user_location is not None:
+            try:
+                distance = float(self.distance_input.text())
+                user_lat, user_lon = self.user_location
+                self.filtered_caves = self.filtered_caves.loc[self.filtered_caves.apply(lambda row: geodesic((user_lat, user_lon), (row['latitude'], row['longitude'])).miles <= distance, axis=1)]
+            except ValueError:
+                pass
+
+        self.cave_list.addItems(self.filtered_caves['cave'].tolist())
         self.show_filtered_cave_locations()
 
     def initUI(self):
@@ -230,17 +254,15 @@ class CaveMapper(QWidget):
             user_location_button.clicked.connect(self.get_user_location)
             controls_layout.addWidget(user_location_button)
 
-            # Create a label and input for distance
+             # Create a label and input for distance
             distance_label = QLabel("Distance (miles):")
             controls_layout.addWidget(distance_label)
 
-            distance_input = QLineEdit()
-            controls_layout.addWidget(distance_input)
+            self.distance_input = QLineEdit()
+            self.distance_input.textChanged.connect(self.filter_caves_by_distance)
+            controls_layout.addWidget(self.distance_input)
 
-            # Create a button to show caves within the specified distance
-            show_caves_within_distance_button = QPushButton("Show Caves Within Distance")
-            show_caves_within_distance_button.clicked.connect(lambda: self.show_caves_within_distance(float(distance_input.text())))
-            controls_layout.addWidget(show_caves_within_distance_button)
+
 
             # Create a button to show all cave locations
             show_all_button = QPushButton("Show All Caves")
