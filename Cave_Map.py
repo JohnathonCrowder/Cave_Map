@@ -1,7 +1,7 @@
 import sys
 import os
 import pandas as pd
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QPushButton, QLineEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QPushButton, QLineEdit, QComboBox
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtCore import QUrl
 import folium
@@ -17,6 +17,7 @@ class CaveMapper(QWidget):
         self.user_location = None
         self.map_widget = None
         self.map_tiles = 'OpenStreetMap'
+        self.filtered_caves = self.df  # Add this line to initialize filtered_caves
         self.initUI()
 
     def csv_to_dataframe(self):
@@ -39,6 +40,7 @@ class CaveMapper(QWidget):
     def show_all_cave_locations(self):
         self.search_entry.clear()
         self.distance_input.clear()
+        self.country_dropdown.setCurrentIndex(0)  # Set dropdown to "All Countries"
         self.filter_caves("")
 
         if self.df is not None:
@@ -203,12 +205,19 @@ class CaveMapper(QWidget):
             self.get_user_location()
         self.filter_caves(self.search_entry.text())
 
+    def filter_caves_by_country(self, index):
+        selected_country = self.country_dropdown.currentText()
+        if selected_country == "All Countries":
+            self.filtered_caves = self.df
+        else:
+            self.filtered_caves = self.df[self.df['countryCode'] == selected_country]
+
+        self.filter_caves(self.search_entry.text())
+
     def filter_caves(self, text):
         self.cave_list.clear()
         if text:
-            self.filtered_caves = self.df[self.df['cave'].str.lower().str.startswith(text.lower())]
-        else:
-            self.filtered_caves = self.df
+            self.filtered_caves = self.filtered_caves[self.filtered_caves['cave'].str.lower().str.startswith(text.lower())]
 
         if self.distance_input.text() and self.user_location is not None:
             try:
@@ -223,6 +232,41 @@ class CaveMapper(QWidget):
 
     def initUI(self):
         if self.df is not None:
+            # Set the dark theme stylesheet
+            self.setStyleSheet('''
+                QWidget {
+                    background-color: #333333;
+                    color: #ffffff;
+                }
+                QLineEdit {
+                    background-color: #444444;
+                    color: #ffffff;
+                    border: 1px solid #555555;
+                }
+                QListWidget {
+                    background-color: #444444;
+                    color: #ffffff;
+                    border: 1px solid #555555;
+                }
+                QPushButton {
+                    background-color: #555555;
+                    color: #ffffff;
+                    border: none;
+                    padding: 5px;
+                }
+                QPushButton:hover {
+                    background-color: #666666;
+                }
+                QCheckBox {
+                    color: #ffffff;
+                }
+                QComboBox {
+                    background-color: #444444;
+                    color: #ffffff;
+                    border: 1px solid #555555;
+                }
+            ''')
+
             layout = QVBoxLayout()
 
             # Create a horizontal layout for the map and controls
@@ -241,6 +285,19 @@ class CaveMapper(QWidget):
             self.search_entry.textChanged.connect(self.filter_caves)
             controls_layout.addWidget(self.search_entry)
 
+            # Create an input for distance with placeholder text
+            self.distance_input = QLineEdit()
+            self.distance_input.setPlaceholderText("Distance (miles)")
+            self.distance_input.textChanged.connect(self.filter_caves_by_distance)
+            controls_layout.addWidget(self.distance_input)
+
+            # Create a dropdown menu for country code filtering
+            self.country_dropdown = QComboBox()
+            self.country_dropdown.addItem("All Countries")
+            self.country_dropdown.addItems(self.df['countryCode'].unique())
+            self.country_dropdown.currentIndexChanged.connect(self.filter_caves_by_country)
+            controls_layout.addWidget(self.country_dropdown)
+
             # Create a list widget for cave names
             self.cave_list = QListWidget()
             self.cave_list.addItems(self.df['cave'].tolist())
@@ -255,16 +312,6 @@ class CaveMapper(QWidget):
             user_location_button = QPushButton("Show My Location")
             user_location_button.clicked.connect(self.get_user_location)
             controls_layout.addWidget(user_location_button)
-
-             # Create a label and input for distance
-            distance_label = QLabel("Distance (miles):")
-            controls_layout.addWidget(distance_label)
-
-            self.distance_input = QLineEdit()
-            self.distance_input.textChanged.connect(self.filter_caves_by_distance)
-            controls_layout.addWidget(self.distance_input)
-
-
 
             # Create a button to show all cave locations
             show_all_button = QPushButton("Show All Caves")
@@ -307,7 +354,7 @@ class CaveMapper(QWidget):
        self.show_all_cave_locations()
 
 if __name__ == '__main__':
-    filepath = r"C:\Users\Admin\Downloads\caves.csv"
+    filepath = r"Cave_map.csv"
     app = QApplication(sys.argv)
     cave_mapper = CaveMapper(filepath)
     sys.exit(app.exec_())
