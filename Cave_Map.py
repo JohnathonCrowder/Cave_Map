@@ -203,7 +203,15 @@ class CaveMapper(QWidget):
     def filter_caves_by_distance(self, text):
         if self.user_location is None:
             self.get_user_location()
-        self.filter_caves(self.search_entry.text())
+
+        if text:
+            try:
+                distance = float(text)
+                self.filter_caves(self.search_entry.text())
+            except ValueError:
+                pass
+        else:
+            self.filter_caves(self.search_entry.text())
 
     def filter_caves_by_country(self, index):
         selected_country = self.country_dropdown.currentText()
@@ -216,8 +224,15 @@ class CaveMapper(QWidget):
 
     def filter_caves(self, text):
         self.cave_list.clear()
+
         if text:
-            self.filtered_caves = self.filtered_caves[self.filtered_caves['cave'].str.lower().str.startswith(text.lower())]
+            self.filtered_caves = self.df[self.df['cave'].str.lower().str.startswith(text.lower())]
+        else:
+            self.filtered_caves = self.df
+
+        if self.country_dropdown.currentText() != "All Countries":
+            selected_country = self.country_dropdown.currentText()
+            self.filtered_caves = self.filtered_caves[self.filtered_caves['countryCode'] == selected_country]
 
         if self.distance_input.text() and self.user_location is not None:
             try:
@@ -227,8 +242,15 @@ class CaveMapper(QWidget):
             except ValueError:
                 pass
 
-        self.cave_list.addItems(self.filtered_caves['cave'].tolist())
-        self.show_filtered_cave_locations()
+        if not self.filtered_caves.empty:
+            self.cave_list.addItems(self.filtered_caves['cave'].tolist())
+            self.show_filtered_cave_locations()
+        else:
+            if text or self.distance_input.text():
+                self.map_widget.setHtml("No caves found.")
+            else:
+                self.cave_list.addItems(self.df['cave'].tolist())
+                self.show_all_cave_locations()
 
     def initUI(self):
         if self.df is not None:
