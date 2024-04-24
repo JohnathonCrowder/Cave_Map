@@ -8,6 +8,8 @@ import folium
 import geocoder
 from geopy.distance import geodesic
 from PyQt5.QtWidgets import QCheckBox
+from folium.plugins import MarkerCluster
+
 
 class CaveMapper(QWidget):
     def __init__(self, filepath):
@@ -17,7 +19,9 @@ class CaveMapper(QWidget):
         self.user_location = None
         self.map_widget = None
         self.map_tiles = 'OpenStreetMap'
-        self.filtered_caves = self.df  # Add this line to initialize filtered_caves
+        self.filtered_caves = self.df
+        self.page_size = 100  # Number of caves to load per page
+        self.current_page = 0  # Current page number
         self.initUI()
 
     def csv_to_dataframe(self):
@@ -49,8 +53,9 @@ class CaveMapper(QWidget):
                 mean_lat = self.df['latitude'].mean()
                 mean_lon = self.df['longitude'].mean()
 
-                # Create a map centered on the mean latitude and longitude
                 cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, tiles=self.map_tiles)
+
+                marker_cluster = MarkerCluster().add_to(cave_map)
 
                 # Add markers for each cave location with the cave name, coordinates, and a button
                 for idx, row in self.df.iterrows():
@@ -64,7 +69,7 @@ class CaveMapper(QWidget):
                         <button onclick="console.log('{cave}')">Print Cave Name</button>
                     '''
                     popup = folium.Popup(popup_html, max_width=300)
-                    folium.Marker([latitude, longitude], popup=popup).add_to(cave_map)
+                    folium.Marker([latitude, longitude], popup=popup).add_to(marker_cluster)
 
                 # Save the map as an HTML file
                 cave_map.save("caves.html")
@@ -267,15 +272,29 @@ class CaveMapper(QWidget):
             except ValueError:
                 pass
 
+        self.current_page = 0  # Reset current page when filtering caves
+        self.load_caves()
+
+    def load_caves(self):
+        start_index = self.current_page * self.page_size
+        end_index = start_index + self.page_size
+
         if not self.filtered_caves.empty:
-            self.cave_list.addItems(self.filtered_caves['cave'].astype(str).tolist())
+            caves_to_load = self.filtered_caves.iloc[start_index:end_index]['cave'].astype(str).tolist()
+            self.cave_list.addItems(caves_to_load)
             self.show_filtered_cave_locations()
         else:
-            if text or self.distance_input.text():
+            if self.search_entry.text() or self.distance_input.text():
                 self.map_widget.setHtml("No caves found.")
             else:
-                self.cave_list.addItems(self.df['cave'].tolist())
+                caves_to_load = self.df.iloc[start_index:end_index]['cave'].tolist()
+                self.cave_list.addItems(caves_to_load)
                 self.show_all_cave_locations()
+
+    def load_more_caves(self):
+        if self.cave_list.verticalScrollBar().value() == self.cave_list.verticalScrollBar().maximum():
+            self.current_page += 1
+            self.load_caves()
 
     def initUI(self):
         if self.df is not None:
@@ -325,6 +344,8 @@ class CaveMapper(QWidget):
 
             # Create a vertical layout for the controls
             controls_layout = QVBoxLayout()
+
+
 
             # Create a search entry box
             self.search_entry = QLineEdit()
@@ -381,6 +402,9 @@ class CaveMapper(QWidget):
             self.satellite_checkbox = QCheckBox("Satellite Mode")
             self.satellite_checkbox.stateChanged.connect(self.toggle_satellite_mode)
             controls_layout.addWidget(self.satellite_checkbox)
+
+            self.cave_list.verticalScrollBar().valueChanged.connect(self.load_more_caves)
+
 
             self.setLayout(layout)
             self.setGeometry(100, 100, 800, 600)
