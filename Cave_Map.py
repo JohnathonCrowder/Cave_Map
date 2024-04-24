@@ -22,7 +22,7 @@ class CaveMapper(QWidget):
 
     def csv_to_dataframe(self):
         try:
-            df = pd.read_csv(self.filepath)
+            df = pd.read_csv(self.filepath, on_bad_lines='skip')
             return df
         except FileNotFoundError:
             print(f"File not found: {self.filepath}")
@@ -30,14 +30,12 @@ class CaveMapper(QWidget):
         except pd.errors.EmptyDataError:
             print(f"Empty file: {self.filepath}")
             return None
-        except pd.errors.ParserError:
-            print(f"Error parsing the CSV file: {self.filepath}")
-            return None
         except Exception as e:
             print(f"An error occurred: {str(e)}")
             return None
 
     def show_all_cave_locations(self):
+        self.df = self.df.dropna(subset=['latitude', 'longitude'])
         self.search_entry.clear()
         self.distance_input.clear()
         self.country_dropdown.setCurrentIndex(0)  # Set dropdown to "All Countries"
@@ -140,32 +138,38 @@ class CaveMapper(QWidget):
 
     def show_filtered_cave_locations(self):
         if not self.filtered_caves.empty:
-            # Calculate the mean latitude and longitude of filtered caves
-            mean_lat = self.filtered_caves['latitude'].mean()
-            mean_lon = self.filtered_caves['longitude'].mean()
+            # Remove rows with NaN values in 'latitude' or 'longitude' columns
+            self.filtered_caves = self.filtered_caves.dropna(subset=['latitude', 'longitude'])
 
-            # Create a map centered on the mean latitude and longitude
-            cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, tiles=self.map_tiles)
+            if not self.filtered_caves.empty:
+                # Calculate the mean latitude and longitude of filtered caves
+                mean_lat = self.filtered_caves['latitude'].mean()
+                mean_lon = self.filtered_caves['longitude'].mean()
 
-            # Add markers for each filtered cave location with the cave name, coordinates, and a button
-            for idx, row in self.filtered_caves.iterrows():
-                cave = row['cave']
-                latitude = row['latitude']
-                longitude = row['longitude']
-                popup_html = f'''
-                    <b>{cave}</b><br>
-                    Latitude: {latitude}<br>
-                    Longitude: {longitude}<br>
-                    <button onclick="console.log('{cave}')">Print Cave Name</button>
-                '''
-                popup = folium.Popup(popup_html, max_width=300)
-                folium.Marker([latitude, longitude], popup=popup).add_to(cave_map)
+                # Create a map centered on the mean latitude and longitude
+                cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, tiles=self.map_tiles)
 
-            # Save the map as an HTML file
-            cave_map.save("filtered_caves.html")
+                # Add markers for each filtered cave location with the cave name, coordinates, and a button
+                for idx, row in self.filtered_caves.iterrows():
+                    cave = row['cave']
+                    latitude = row['latitude']
+                    longitude = row['longitude']
+                    popup_html = f'''
+                        <b>{cave}</b><br>
+                        Latitude: {latitude}<br>
+                        Longitude: {longitude}<br>
+                        <button onclick="console.log('{cave}')">Print Cave Name</button>
+                    '''
+                    popup = folium.Popup(popup_html, max_width=300)
+                    folium.Marker([latitude, longitude], popup=popup).add_to(cave_map)
 
-            # Load the HTML file in the map widget
-            self.map_widget.load(QUrl.fromLocalFile(os.path.abspath("filtered_caves.html")))
+                # Save the map as an HTML file
+                cave_map.save("filtered_caves.html")
+
+                # Load the HTML file in the map widget
+                self.map_widget.load(QUrl.fromLocalFile(os.path.abspath("filtered_caves.html")))
+            else:
+                self.map_widget.setHtml("No caves found.")
         else:
             self.map_widget.setHtml("No caves found.")
 
@@ -243,7 +247,7 @@ class CaveMapper(QWidget):
                 pass
 
         if not self.filtered_caves.empty:
-            self.cave_list.addItems(self.filtered_caves['cave'].tolist())
+            self.cave_list.addItems(self.filtered_caves['cave'].astype(str).tolist())
             self.show_filtered_cave_locations()
         else:
             if text or self.distance_input.text():
@@ -316,13 +320,14 @@ class CaveMapper(QWidget):
             # Create a dropdown menu for country code filtering
             self.country_dropdown = QComboBox()
             self.country_dropdown.addItem("All Countries")
-            self.country_dropdown.addItems(self.df['countryCode'].unique())
+            self.country_dropdown.addItems(self.df['countryCode'].astype(str).unique())
+
             self.country_dropdown.currentIndexChanged.connect(self.filter_caves_by_country)
             controls_layout.addWidget(self.country_dropdown)
 
             # Create a list widget for cave names
             self.cave_list = QListWidget()
-            self.cave_list.addItems(self.df['cave'].tolist())
+            self.cave_list.addItems(self.df['cave'].astype(str).tolist())
             controls_layout.addWidget(self.cave_list)
 
             # Create a button to show the selected cave on the map
@@ -376,7 +381,7 @@ class CaveMapper(QWidget):
        self.show_all_cave_locations()
 
 if __name__ == '__main__':
-    filepath = r"Cave_map.csv"
+    filepath = r"E:\Github\Cave_Map\Cave_map.csv"
     app = QApplication(sys.argv)
     cave_mapper = CaveMapper(filepath)
     sys.exit(app.exec_())
