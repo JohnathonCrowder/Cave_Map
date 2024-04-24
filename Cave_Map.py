@@ -174,6 +174,7 @@ class CaveMapper(QWidget):
             self.map_widget.setHtml("No caves found.")
 
     def show_caves_within_distance(self, distance):
+        self.df = self.df.dropna(subset=['latitude', 'longitude'])
         if self.df is not None and self.user_location is not None:
             user_lat, user_lon = self.user_location
 
@@ -205,6 +206,7 @@ class CaveMapper(QWidget):
             print("DataFrame is empty or user location is not available.")
 
     def filter_caves_by_distance(self, text):
+        self.df = self.df.dropna(subset=['latitude', 'longitude'])
         if self.user_location is None:
             self.get_user_location()
 
@@ -217,7 +219,18 @@ class CaveMapper(QWidget):
         else:
             self.filter_caves(self.search_entry.text())
 
+    def filter_caves_by_state(self, index):
+        self.df = self.df.dropna(subset=['latitude', 'longitude'])
+        selected_state = self.state_dropdown.currentText()
+        if selected_state == "All States":
+            self.filtered_caves = self.df
+        else:
+            self.filtered_caves = self.df[self.df['region'] == selected_state]
+
+        self.filter_caves(self.search_entry.text())
+
     def filter_caves_by_country(self, index):
+        self.df = self.df.dropna(subset=['latitude', 'longitude'])
         selected_country = self.country_dropdown.currentText()
         if selected_country == "All Countries":
             self.filtered_caves = self.df
@@ -228,6 +241,7 @@ class CaveMapper(QWidget):
 
     def filter_caves(self, text):
         self.cave_list.clear()
+        self.df = self.df.dropna(subset=['latitude', 'longitude'])
 
         if text:
             self.filtered_caves = self.df[self.df['cave'].str.lower().str.startswith(text.lower())]
@@ -237,6 +251,10 @@ class CaveMapper(QWidget):
         if self.country_dropdown.currentText() != "All Countries":
             selected_country = self.country_dropdown.currentText()
             self.filtered_caves = self.filtered_caves[self.filtered_caves['countryCode'] == selected_country]
+
+        if self.state_dropdown.currentText() != "All States":
+            selected_state = self.state_dropdown.currentText()
+            self.filtered_caves = self.filtered_caves[self.filtered_caves['region'] == selected_state]
 
         if self.distance_input.text() and self.user_location is not None:
             try:
@@ -316,6 +334,14 @@ class CaveMapper(QWidget):
             self.distance_input.setPlaceholderText("Distance (miles)")
             self.distance_input.textChanged.connect(self.filter_caves_by_distance)
             controls_layout.addWidget(self.distance_input)
+
+             # Create a dropdown menu for state filtering
+            self.state_dropdown = QComboBox()
+            self.state_dropdown.addItem("All States")
+            self.state_dropdown.addItems(self.df['region'].astype(str).unique())
+
+            self.state_dropdown.currentIndexChanged.connect(self.filter_caves_by_state)
+            controls_layout.addWidget(self.state_dropdown)
 
             # Create a dropdown menu for country code filtering
             self.country_dropdown = QComboBox()
