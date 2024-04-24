@@ -39,32 +39,35 @@ class CaveMapper(QWidget):
         self.search_entry.clear()
         self.distance_input.clear()
         self.country_dropdown.setCurrentIndex(0)  # Set dropdown to "All Countries"
+        self.state_dropdown.setCurrentIndex(0)  # Set dropdown to "All States"
         self.filter_caves("")
 
         if self.df is not None:
-            # Calculate the mean latitude and longitude of all caves
-            mean_lat = self.df['latitude'].mean()
-            mean_lon = self.df['longitude'].mean()
+            # Check if the HTML file already exists
+            if not os.path.exists("caves.html"):
+                # Calculate the mean latitude and longitude of all caves
+                mean_lat = self.df['latitude'].mean()
+                mean_lon = self.df['longitude'].mean()
 
-            # Create a map centered on the mean latitude and longitude
-            cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, tiles=self.map_tiles)
+                # Create a map centered on the mean latitude and longitude
+                cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, tiles=self.map_tiles)
 
-            # Add markers for each cave location with the cave name, coordinates, and a button
-            for idx, row in self.df.iterrows():
-                cave = row['cave']
-                latitude = row['latitude']
-                longitude = row['longitude']
-                popup_html = f'''
-                    <b>{cave}</b><br>
-                    Latitude: {latitude}<br>
-                    Longitude: {longitude}<br>
-                    <button onclick="console.log('{cave}')">Print Cave Name</button>
-                '''
-                popup = folium.Popup(popup_html, max_width=300)
-                folium.Marker([latitude, longitude], popup=popup).add_to(cave_map)
+                # Add markers for each cave location with the cave name, coordinates, and a button
+                for idx, row in self.df.iterrows():
+                    cave = row['cave']
+                    latitude = row['latitude']
+                    longitude = row['longitude']
+                    popup_html = f'''
+                        <b>{cave}</b><br>
+                        Latitude: {latitude}<br>
+                        Longitude: {longitude}<br>
+                        <button onclick="console.log('{cave}')">Print Cave Name</button>
+                    '''
+                    popup = folium.Popup(popup_html, max_width=300)
+                    folium.Marker([latitude, longitude], popup=popup).add_to(cave_map)
 
-            # Save the map as an HTML file
-            cave_map.save("caves.html")
+                # Save the map as an HTML file
+                cave_map.save("caves.html")
 
             # Load the HTML file in the map widget
             self.map_widget.load(QUrl.fromLocalFile(os.path.abspath("caves.html")))
@@ -383,8 +386,13 @@ class CaveMapper(QWidget):
             self.setGeometry(100, 100, 800, 600)
             self.setWindowTitle('Cave Mapper')
 
-            # Show all cave locations when the application starts
-            self.show_all_cave_locations()
+            # Check if the cached "caves.html" file exists
+            if os.path.exists("caves.html"):
+                # Load the cached HTML file in the map widget
+                self.map_widget.load(QUrl.fromLocalFile(os.path.abspath("caves.html")))
+            else:
+                # Show all cave locations and create the HTML file
+                self.show_all_cave_locations()
 
             self.show()
         else:
