@@ -253,7 +253,7 @@ class CaveMapper(QWidget):
         self.df = self.df.dropna(subset=['latitude', 'longitude'])
 
         if text:
-            self.filtered_caves = self.df[self.df['cave'].str.lower().str.startswith(text.lower())]
+            self.filtered_caves = self.df[self.df['cave'].astype(str).str.lower().str.startswith(text.lower())]
         else:
             self.filtered_caves = self.df
 
@@ -363,7 +363,10 @@ class CaveMapper(QWidget):
              # Create a dropdown menu for state filtering
             self.state_dropdown = QComboBox()
             self.state_dropdown.addItem("All States")
-            self.state_dropdown.addItems(self.df['region'].astype(str).unique())
+            states = self.df['region'].astype(str).unique()
+            states = [state for state in states if state != 'nan']
+            states.sort()
+            self.state_dropdown.addItems(states)
 
             self.state_dropdown.currentIndexChanged.connect(self.filter_caves_by_state)
             controls_layout.addWidget(self.state_dropdown)
@@ -371,7 +374,9 @@ class CaveMapper(QWidget):
             # Create a dropdown menu for country code filtering
             self.country_dropdown = QComboBox()
             self.country_dropdown.addItem("All Countries")
-            self.country_dropdown.addItems(self.df['countryCode'].astype(str).unique())
+            country_codes = self.df['countryCode'].astype(str).unique()
+            country_codes = [code for code in country_codes if code != 'nan'] #Removes nan from dropdown options
+            self.country_dropdown.addItems(country_codes)
 
             self.country_dropdown.currentIndexChanged.connect(self.filter_caves_by_country)
             controls_layout.addWidget(self.country_dropdown)
