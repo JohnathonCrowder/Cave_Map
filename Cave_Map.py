@@ -65,7 +65,6 @@ class CaveMapper(QWidget):
                         <b>{cave}</b><br>
                         Latitude: {latitude}<br>
                         Longitude: {longitude}<br>
-                        <button onclick="console.log('{cave}')">Print Cave Name</button>
                     '''
                     popup = folium.Popup(popup_html, max_width=300)
                     folium.Marker([latitude, longitude], popup=popup).add_to(marker_cluster)
@@ -114,7 +113,6 @@ class CaveMapper(QWidget):
             <b>{cave}</b><br>
             Latitude: {latitude}<br>
             Longitude: {longitude}<br>
-            <button onclick="console.log('{cave}')">Print Cave Name</button>
         '''
         popup = folium.Popup(popup_html, max_width=300)
         folium.Marker([latitude, longitude], popup=popup).add_to(cave_map)
@@ -166,7 +164,6 @@ class CaveMapper(QWidget):
                         <b>{cave}</b><br>
                         Latitude: {latitude}<br>
                         Longitude: {longitude}<br>
-                        <button onclick="console.log('{cave}')">Print Cave Name</button>
                     '''
                     popup = folium.Popup(popup_html, max_width=300)
                     folium.Marker([latitude, longitude], popup=popup).add_to(marker_cluster)
