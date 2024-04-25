@@ -53,8 +53,7 @@ class CaveMapper(QWidget):
                 mean_lat = self.df['latitude'].mean()
                 mean_lon = self.df['longitude'].mean()
 
-                cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, tiles=self.map_tiles)
-
+                cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, tiles=self.map_tiles, attr='Tiles')
                 marker_cluster = MarkerCluster().add_to(cave_map)
 
                 # Add markers for each cave location with the cave name, coordinates, and a button
@@ -108,7 +107,7 @@ class CaveMapper(QWidget):
                 return
 
         # Create a map centered on the cave location
-        cave_map = folium.Map(location=[latitude, longitude], zoom_start=10, tiles=self.map_tiles)
+        cave_map = folium.Map(location=[latitude, longitude], zoom_start=10, tiles=self.map_tiles, attr='Tiles')
 
         # Add a marker for the cave location with the cave name, coordinates, and a button
         popup_html = f'''
@@ -131,7 +130,7 @@ class CaveMapper(QWidget):
             user_lat, user_lon = self.user_location
 
             # Create a map centered on the user's location
-            user_map = folium.Map(location=[user_lat, user_lon], zoom_start=10, tiles=self.map_tiles)
+            user_map = folium.Map(location=[user_lat, user_lon], zoom_start=10, tiles=self.map_tiles, attr='Tiles')
 
             # Add a marker for the user's location
             folium.Marker([user_lat, user_lon], popup="Your Location", icon=folium.Icon(color='red')).add_to(user_map)
@@ -155,7 +154,8 @@ class CaveMapper(QWidget):
                 mean_lon = self.filtered_caves['longitude'].mean()
 
                 # Create a map centered on the mean latitude and longitude
-                cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, tiles=self.map_tiles)
+                cave_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, tiles=self.map_tiles, attr='Tiles')
+                marker_cluster = MarkerCluster().add_to(cave_map)
 
                 # Add markers for each filtered cave location with the cave name, coordinates, and a button
                 for idx, row in self.filtered_caves.iterrows():
@@ -169,7 +169,8 @@ class CaveMapper(QWidget):
                         <button onclick="console.log('{cave}')">Print Cave Name</button>
                     '''
                     popup = folium.Popup(popup_html, max_width=300)
-                    folium.Marker([latitude, longitude], popup=popup).add_to(cave_map)
+                    folium.Marker([latitude, longitude], popup=popup).add_to(marker_cluster)
+
 
                 # Save the map as an HTML file
                 cave_map.save("filtered_caves.html")
@@ -191,7 +192,7 @@ class CaveMapper(QWidget):
 
             if not nearby_caves.empty:
                 # Create a map centered on the user's location
-                nearby_caves_map = folium.Map(location=[user_lat, user_lon], zoom_start=8, tiles=self.map_tiles)
+                nearby_caves_map = folium.Map(location=[user_lat, user_lon], zoom_start=8, tiles=self.map_tiles, attr='Tiles')
 
                 # Add a marker for the user's location
                 folium.Marker([user_lat, user_lon], popup="Your Location", icon=folium.Icon(color='red')).add_to(nearby_caves_map)
@@ -432,11 +433,14 @@ class CaveMapper(QWidget):
             print("Unable to retrieve user location.")
 
     def toggle_satellite_mode(self, state):
-       if state:
-           self.map_tiles = 'Esri World_Imagery'
-       else:
-           self.map_tiles = 'OpenStreetMap'
-       self.show_all_cave_locations()
+        if state:
+            self.map_tiles = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        else:
+            self.map_tiles = 'OpenStreetMap'
+        self.show_all_cave_locations()
+        self.show_filtered_cave_locations()
+        self.show_cave_at_index(self.cave_list.currentRow())
+        self.show_user_location()
 
 if __name__ == '__main__':
     filepath = r"E:\Github\Cave_Map\Cave_map.csv"
